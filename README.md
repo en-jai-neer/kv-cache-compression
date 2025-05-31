@@ -1,10 +1,45 @@
 # Memory Reduction for LLM Inference via KV-Cache Compression
 
-This project provides an efficient method for compressing the key-value cache in transformer models to optimize memory usage and speed during inference. The key-value cache compression framework allows for more efficient generation by dynamically reducing the cache size while retaining critical context, making it ideal for deployment in memory-constrained environments.
+This project implements a novel Key-Value (KV) cache compression strategy for Large Language Models (LLMs), designed to significantly reduce memory demands during long-context inference. As LLMs demonstrate exceptional capabilities in tasks requiring extended context, their memory requirements, particularly for the KV cache, become a critical bottleneck, often exceeding the capacity of current GPUs. This work offers a solution to enable efficient LLM inference in memory-constrained environments without substantially sacrificing generation quality.
+
+## The Challenge: KV Cache Bottleneck in Long-Context LLMs
+
+The KV cache is essential for efficient autoregressive decoding in LLMs, storing past key and value states to calculate attention scores. However, its size scales linearly with context length and batch size, leading to massive memory consumption for long sequences. For instance, a 175 billion parameter model can require over 1,200 GB of GPU memory for a batch size of 64 and a sequence length of 4,096 tokens, far surpassing typical GPU capacities. This limitation hinders the deployment of powerful LLMs for long-context tasks, especially on mobile devices or other memory-restricted settings.
+
+## Our Approach: Merging-Focused, Two-Dimensional Compression
+
+Existing KV cache compression techniques often rely on eviction (discarding tokens) or quantization, which can compromise global context retention or computational efficiency. This project implements a novel approach that emphasizes **merging** over eviction. It features a dual strategy:
+
+1.  **Coarse-Grained Sequence Length Compression**: This strategy progressively merges older tokens using pooling techniques once a user-defined threshold is met. The oldest tokens are compressed more aggressively, while recent tokens are preserved with higher fidelity to maintain crucial information.
+2.  **Pyramidal Layer Compression**: Leveraging the observation that lower transformer layers attend to global context and higher layers focus on localized information, this method progressively decreases the compression threshold (and thus the cache budget) across layers. This forms a pyramid-like structure for the KV cache, retaining critical global context in lower layers and focusing on local information in higher layers.
+
+This two-dimensional merging strategy effectively reduces the memory footprint of the KV cache.
+
+## Key Features
+
+* **Memory Efficiency**: Significantly reduces KV cache memory, enabling long-context inference on memory-constrained hardware.
+* **Merging-based Compression**: Prioritizes merging tokens over eviction to better preserve global context.
+* **Pyramidal Layer Compression**: Adapts cache size per layer, allocating more budget to lower layers for global context and less to higher layers for local context.
+* **Sequence Length Compression**: Dynamically merges older tokens along the sequence length using various pooling strategies.
+    * Supports pooling types: **mean**, **max**, and **best**. (Our work finds 'Best' pooling often optimal for smaller budgets, and 'Mean' for larger ones).
+* **Context Preservation**: Designed to retain critical information by preserving recent tokens and "attention sink" tokens (e.g., initial tokens) without compression.
+* **Flexible Configuration**: Allows control over initial cache budget ($L_0$), pyramid compression ratio ($\beta$), number of sink tokens, and pooling strategy.
+* **Compatibility**: Built to work with Hugging Face transformer models.
+
+## Methodology Highlights
+
+The compression approach is motivated by several observations:
+* Attention sinks (like start tokens) are crucial and are not compressed.
+* Attention patterns become more localized in higher transformer layers, justifying progressive compression across layers.
+* Beyond initial and recent tokens, there are few attention sinks, making sequence-length compression viable for older tokens.
+
+The **Pyramidal Layer Compression** defines the cache budget for layer $k$ as $L_k = L_0[1 + \frac{k}{m}(\frac{1}{\beta} - 1)]$, where $L_0$ is the initial budget for layer 0, $m$ is the total number of layers, and $\beta$ is the compression ratio between the 0th and $(m-1)$-th layer ($L_{m-1} = L_0/\beta$)[cite: 77].
+
+The **Sequence Length Compression** groups key-value pairs into windows and merges them using strategies like mean, max, or a "best" token selection. Least recent tokens are compressed as new tokens are generated.
 
 ## Table of Contents
 - [Key-Value Cache Compression for Transformers](#key-value-cache-compression-for-transformers)
-  - [Features](#features)
+  - [Documentation](#documentation)
   - [Requirements](#requirements)
   - [Installation](#installation)
   - [Environment Variables](#environment-variables)
@@ -14,12 +49,8 @@ This project provides an efficient method for compressing the key-value cache in
   - [Project Structure](#project-structure)
   - [File Descriptions](#file-descriptions)
 
-## Features
-- Compresses the key-value (KV) cache in transformers to enable faster and memory-efficient inference.
-- Supports various pooling types to control compression: **mean**, **max**, and **best**.
-- Offers flexible control over initial window sizes, steepness of local window changes, and sink tokens.
-- Compatible with any Hugging Face transformer model for quick experimentation with different models.
-- Provides support for multiple decoding strategies (e.g., greedy, beam search).
+## Documentation
+### Detailed Report - **[Memory Reduction for LLM Inference via KV-Cache Compression](Memory_Reduction_for_LLM_Inference_via_KV-Cache_Compression.pdf)**
 
 ## Requirements
 - Python 3.7+
@@ -31,7 +62,7 @@ Detailed requirements can be found in the `requirements.txt` file.
 ## Installation
 1. Clone this repository:
    ```bash
-   git clone https://github.com/neelabhsinha/lm-compression.git
+   git clone https://github.com/en-jai-neer/kv-cache-compression.git
    cd lm-compression
    ```
 2. Install the required Python packages:
@@ -163,3 +194,4 @@ After execution, results will be stored in `results` folder.
 ### Other Files
 - **const.py**: Contains global constants used throughout the project, such as default configuration values or constants used for logging.
 - **requirements.txt**: Lists the necessary dependencies for running the project, including libraries such as `torch` and `transformers`.
+
