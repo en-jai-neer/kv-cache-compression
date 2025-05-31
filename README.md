@@ -33,7 +33,7 @@ The compression approach is motivated by several observations:
 * Attention patterns become more localized in higher transformer layers, justifying progressive compression across layers.
 * Beyond initial and recent tokens, there are few attention sinks, making sequence-length compression viable for older tokens.
 
-The **Pyramidal Layer Compression** defines the cache budget for layer $k$ as $L_k = L_0[1 + \frac{k}{m}(\frac{1}{\beta} - 1)]$, where $L_0$ is the initial budget for layer 0, $m$ is the total number of layers, and $\beta$ is the compression ratio between the 0th and $(m-1)$-th layer ($L_{m-1} = L_0/\beta$)[cite: 77].
+The **Pyramidal Layer Compression** defines the cache budget for layer $k$ as $L_k = L_0[1 + \frac{k}{m}(\frac{1}{\beta} - 1)]$, where $L_0$ is the initial budget for layer 0, $m$ is the total number of layers, and $\beta$ is the compression ratio.
 
 The **Sequence Length Compression** groups key-value pairs into windows and merges them using strategies like mean, max, or a "best" token selection. Least recent tokens are compressed as new tokens are generated.
 
@@ -50,7 +50,7 @@ The **Sequence Length Compression** groups key-value pairs into windows and merg
   - [File Descriptions](#file-descriptions)
 
 ## Documentation
-### Detailed Report - **[Memory Reduction for LLM Inference via KV-Cache Compression](Memory_Reduction_for_LLM_Inference_via_KV-Cache_Compression.pdf)**
+- Detailed Report - **[Memory Reduction for LLM Inference via KV-Cache Compression](Memory_Reduction_for_LLM_Inference_via_KV_Cache_Compression.pdf)**
 
 ## Requirements
 - Python 3.7+
